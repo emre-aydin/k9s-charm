@@ -3,6 +3,9 @@
 *.charm
 build/
 
+# Exported Charmhub credentials (see README: Publishing to Charmhub)
+charmhub-auth.txt
+
 # Python
 .venv/
 .pytest_cache/

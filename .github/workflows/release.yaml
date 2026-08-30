@@ -1,0 +1,138 @@
+name: Release to Charmhub
+
+# Manual releases only: packing, uploading and releasing are deliberately not
+# tied to pushes, so that landing on main never publishes anything.
+#
+# Requires the CHARMHUB_TOKEN repository secret. See "Publishing to Charmhub"
+# in the README for how to mint and rotate it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: "Charmhub channel to release into (e.g. latest/edge)"
+        required: true
+        default: latest/edge
+
+permissions:
+  contents: read
+
+# Two concurrent releases would interleave revision numbers across the two
+# architecture jobs and make the release log impossible to read.
+concurrency:
+  group: charmhub-release
+  cancel-in-progress: false
+
+env:
+  CHARM_NAME: k9s
+  RESOURCE_NAME: k9s-image
+
+jobs:
+  unit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+      - name: Run unit tests
+        run: python -m pytest -q
+
+  release:
+    needs: unit
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Check CHARM_NAME matches charmcraft.yaml
+        run: |
+          declared="$(sed -n 's/^name:[[:space:]]*//p' charmcraft.yaml | head -1)"
+          if [ "$declared" != "$CHARM_NAME" ]; then
+            echo "charmcraft.yaml declares name '$declared' but this workflow releases '$CHARM_NAME'" >&2
+            exit 1
+          fi
+
+      - uses: canonical/craft-actions/rockcraft/pack@8bf30ed60eb76cf807c1eb9c728eb1f785afc79d
+        id: rockcraft
+        with:
+          path: rock
+          verbosity: verbose
+
+      - uses: canonical/craft-actions/charmcraft/pack@8bf30ed60eb76cf807c1eb9c728eb1f785afc79d
+        id: charmcraft
+
+      - name: Lint the packed charm
+        run: |
+          # charmcraft only packs the platform matching the runner, so the
+          # space-separated `charms` output holds exactly one file.
+          #
+          # charmcraft encodes the worst lint level in its exit status:
+          # 0 = clean, 3 = warnings only, 2 = error, 1 = fatal. Warnings are
+          # advisory (several linters warn about things this charm does on
+          # purpose, such as having no config), so only errors block a release.
+          rc=0
+          charmcraft analyse "${{ steps.charmcraft.outputs.charms }}" || rc=$?
+          case "$rc" in
+            0|3) ;;
+            *) echo "charmcraft analyse reported errors (exit $rc)" >&2; exit "$rc" ;;
+          esac
+
+      # The charm revision has to exist before the resource can be uploaded:
+      # Charmhub only accepts a resource that is declared in an already-uploaded
+      # revision of the charm.
+      - name: Upload the charm revision
+        id: upload-charm
+        env:
+          CHARMCRAFT_AUTH: ${{ secrets.CHARMHUB_TOKEN }}
+        run: |
+          revision="$(charmcraft upload "${{ steps.charmcraft.outputs.charms }}" --format json | jq -er '.revision')"
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
+          echo "charm revision: $revision"
+
+      # `--image` accepts a path to an OCI archive, so the .rock is uploaded
+      # directly; no Docker daemon or separate skopeo copy is needed.
+      - name: Upload the k9s-image resource revision
+        id: upload-resource
+        env:
+          CHARMCRAFT_AUTH: ${{ secrets.CHARMHUB_TOKEN }}
+        run: |
+          revision="$(charmcraft upload-resource "$CHARM_NAME" "$RESOURCE_NAME" \
+            --image "${{ steps.rockcraft.outputs.rock }}" --format json | jq -er '.revision')"
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
+          echo "resource revision: $revision"
+
+      # Charmhub resource revisions are not architecture-scoped, but charm
+      # revisions are. Binding each arch's charm revision to the resource
+      # revision built from the same-arch rock is what makes Juju hand a unit
+      # an image matching the charm it resolved.
+      - name: Release into ${{ inputs.channel }}
+        env:
+          CHARMCRAFT_AUTH: ${{ secrets.CHARMHUB_TOKEN }}
+        run: |
+          charmcraft release "$CHARM_NAME" \
+            --revision "${{ steps.upload-charm.outputs.revision }}" \
+            --channel "${{ inputs.channel }}" \
+            --resource "$RESOURCE_NAME:${{ steps.upload-resource.outputs.revision }}"
+
+      - name: Summary
+        run: |
+          {
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Architecture | ${{ matrix.arch }} |"
+            echo "| Channel | ${{ inputs.channel }} |"
+            echo "| Charm revision | ${{ steps.upload-charm.outputs.revision }} |"
+            echo "| Resource revision | ${{ steps.upload-resource.outputs.revision }} |"
+          } >> "$GITHUB_STEP_SUMMARY"

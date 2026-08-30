@@ -20,10 +20,15 @@ description: |
   to see resources there.
 
 links:
+  website:
+    - https://github.com/emre-aydin/k9s-charm
   source:
     - https://github.com/emre-aydin/k9s-charm
   issues:
     - https://github.com/emre-aydin/k9s-charm/issues
+  # Rendered as `maintainers` in metadata.yaml and as the contact on the
+  # Charmhub listing, so this wants a person, not the issue tracker URL again.
+  contact: Emre Aydın <emre-aydin@users.noreply.github.com>
 
 assumes:
   - k8s-api

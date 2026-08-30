@@ -11,6 +11,7 @@ configuration. Its only purpose is to be a place you can `juju ssh` into.
 ├── charmcraft.yaml      # the charm
 ├── src/charm.py
 ├── tests/unit/
+├── icon.svg             # Charmhub listing icon
 ├── rock/rockcraft.yaml  # the workload image (k9s + zsh)
 ├── hack/                # build / dev-environment scripts
 └── Makefile
@@ -33,6 +34,14 @@ reads the pod's Kubernetes service account from
 land in the shell.
 
 ### Deploying
+
+From Charmhub, once published (see [Publishing to Charmhub](#publishing-to-charmhub)):
+
+```bash
+juju deploy k9s --channel latest/edge --trust
+```
+
+Or from a locally built charm, supplying the image yourself:
 
 ```bash
 juju deploy ./k9s_ubuntu@24.04-<arch>.charm k9s \
@@ -139,6 +148,99 @@ juju ssh --container k9s k9s/0 -m k9s-test
 The image is tagged with the hash of the built `.rock`. A fixed tag such as `latest` would make
 Juju treat the OCI resource as unchanged on `juju refresh`, silently keeping the old pod.
 
+## Publishing to Charmhub
+
+Releases are manual: `.github/workflows/release.yaml` runs only on `workflow_dispatch`, so
+landing on `main` never publishes anything. Pick a channel (default `latest/edge`) and run the
+workflow; it packs the rock and the charm for `amd64` and `arm64`, uploads both, and releases
+them.
+
+Once published, deploying no longer needs a locally built image or an explicit `--resource`:
+
+```bash
+juju deploy k9s --channel latest/edge --trust
+```
+
+### One-off setup
+
+Both steps need a [Charmhub](https://charmhub.io/) account (an Ubuntu One SSO account) and can
+only be done by a human — CI cannot bootstrap them.
+
+**1. Register the name.** Names are first-come, first-served across all of Charmhub:
+
+```bash
+sudo snap install charmcraft --classic
+charmcraft login
+charmcraft register k9s
+```
+
+**2. Mint the CI credentials.** `charmcraft login --export` writes a macaroon that the workflow
+reads from `CHARMCRAFT_AUTH`. Scope it to this charm and to the two permissions the workflow
+actually uses, rather than exporting your full account credentials:
+
+```bash
+charmcraft login --export charmhub-auth.txt \
+  --charm k9s \
+  --permission package-manage-revisions \
+  --permission package-manage-releases \
+  --ttl 7776000   # 90 days, in seconds
+```
+
+Then store the file's contents **verbatim** as the `CHARMHUB_TOKEN` repository secret:
+
+```bash
+gh secret set CHARMHUB_TOKEN < charmhub-auth.txt
+rm charmhub-auth.txt
+```
+
+`charmhub-auth.txt` is in `.gitignore`, but delete it anyway. The credential expires after the
+`--ttl`, so this has to be repeated periodically; a release failing with an authentication
+error is the usual reminder.
+
+### How a release works
+
+For each architecture, in this order:
+
+1. `rockcraft pack` and `charmcraft pack`.
+2. `charmcraft analyse` on the packed charm. Warnings are advisory and do not block; errors do.
+3. `charmcraft upload` the charm. **This has to happen before the resource is uploaded** —
+   Charmhub will only accept a resource that is declared in an already-uploaded revision of the
+   charm, so the very first release necessarily uploads charm revision 1 first.
+4. `charmcraft upload-resource k9s k9s-image --image <path to the .rock>`. `--image` accepts a
+   path to an OCI archive, so the rock goes straight to Charmhub's registry — no Docker daemon
+   and no separate `skopeo` copy.
+5. `charmcraft release`, binding the charm revision to the resource revision.
+
+Charmhub resource revisions carry no architecture, but charm revisions do. Rather than building
+a multi-arch manifest, each architecture's charm revision is released with the resource revision
+built from the *same architecture's* rock. Juju resolves the charm revision matching the unit's
+architecture and therefore gets a matching image.
+
+### Promoting between channels
+
+Releasing does not rebuild anything — it just points a channel at an existing revision. So
+promotion is a re-release of the revisions already in `edge`:
+
+```bash
+charmcraft status k9s   # lists revisions per channel/base/architecture
+charmcraft release k9s --revision=<amd64 rev> --channel=latest/candidate --resource=k9s-image:<rev>
+charmcraft release k9s --revision=<arm64 rev> --channel=latest/candidate --resource=k9s-image:<rev>
+```
+
+Note that each architecture is promoted separately, with the resource revision it was originally
+released against — reusing one architecture's resource revision for the other would hand units
+an image for the wrong architecture.
+
+The charm stays on the default `latest` track. A dedicated track has to be requested from
+Canonical and is not worth it here.
+
+### Listing page
+
+`title`, `summary`, `description` and `links` in `charmcraft.yaml` are pushed to Charmhub with
+each revision and drive the listing page, as does `icon.svg`. Longer documentation lives on
+[Charmhub's Discourse](https://discourse.charmhub.io/) rather than in this repo, and is linked
+to the listing from the Charmhub web UI.
+
 ## Reproducibility
 
 What is pinned, and what isn't:
@@ -186,3 +288,9 @@ build user's group. The `permissions:` block in the `shell-config` part now pins
 make clean    # remove build artifacts
 make vm-down  # delete the Multipass build VMs
 ```
+
+## License
+
+Apache-2.0 — see [LICENSE](LICENSE). This matches the `license` declared in
+`rock/rockcraft.yaml`. `k9s` itself is a separate upstream project with its own license; this
+repo packages it but does not vendor or modify it.
