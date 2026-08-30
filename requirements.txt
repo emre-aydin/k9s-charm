@@ -1,1 +1,3 @@
-ops ~= 2.17
+# Pinned: charmcraft resolves these at pack time, so an unpinned range makes
+# two packs of the same source produce different charms.
+ops==2.23.4

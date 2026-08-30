@@ -18,13 +18,13 @@ jobs:
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: canonical/craft-actions/rockcraft-pack@main
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: canonical/craft-actions/rockcraft-pack@8bf30ed60eb76cf807c1eb9c728eb1f785afc79d
         id: rockcraft
         with:
           path: rock
           verbosity: verbose
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: rock-${{ matrix.arch }}
           path: ${{ steps.rockcraft.outputs.rock }}

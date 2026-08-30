@@ -19,11 +19,12 @@ if ! multipass list --format csv | grep -q "^${VM_NAME},Running,"; then
 fi
 
 log "installing snaps"
+# Channels are overridable so a build can be pinned to a known-good toolchain.
 # Juju 3.6 only works with strictly confined microk8s, hence the -strict channel.
 multipass exec "$VM_NAME" -- sudo snap install microk8s --channel="${MICROK8S_CHANNEL:-1.35-strict/stable}"
-multipass exec "$VM_NAME" -- sudo snap install juju
-multipass exec "$VM_NAME" -- sudo snap install charmcraft --classic
-multipass exec "$VM_NAME" -- sudo snap install rockcraft --classic
+multipass exec "$VM_NAME" -- sudo snap install juju --channel="${JUJU_CHANNEL:-3.6/stable}"
+multipass exec "$VM_NAME" -- sudo snap install charmcraft --classic --channel="${CHARMCRAFT_CHANNEL:-4.x/stable}"
+multipass exec "$VM_NAME" -- sudo snap install rockcraft --classic --channel="${ROCKCRAFT_CHANNEL:-latest/stable}"
 
 log "configuring microk8s"
 multipass exec "$VM_NAME" -- sudo usermod -a -G snap_microk8s ubuntu

@@ -88,3 +88,14 @@ parts:
     stage:
       - root/.zshrc
       - root/.shinit
+    # Without this the files inherit the build user's group, which varies
+    # between builds (root:nogroup vs root:root).
+    permissions:
+      - path: root/.zshrc
+        owner: 0
+        group: 0
+        mode: "644"
+      - path: root/.shinit
+        owner: 0
+        group: 0
+        mode: "644"

@@ -139,9 +139,50 @@ juju ssh --container k9s k9s/0 -m k9s-test
 The image is tagged with the hash of the built `.rock`. A fixed tag such as `latest` would make
 Juju treat the OCI resource as unchanged on `juju refresh`, silently keeping the old pod.
 
+## Reproducibility
+
+What is pinned, and what isn't:
+
+| Input | Pinned? | How |
+|---|---|---|
+| k9s binary | yes | exact version + per-arch SHA256 verified at build time in `rock/rockcraft.yaml` |
+| `ops` (charm runtime) | yes | `ops==2.23.4` in `requirements.txt` — charmcraft resolves this at pack time, so a range would make two packs of the same source differ |
+| Test toolchain | yes | `requirements-dev.txt` |
+| GitHub Actions | yes | all `uses:` refs are full commit SHAs, including `canonical/craft-actions` |
+| Workload image tag | yes | content hash of the built `.rock` (see below) |
+| Build toolchain snaps | channel-pinned | `ROCKCRAFT_CHANNEL`, `CHARMCRAFT_CHANNEL`, `JUJU_CHANNEL`, `MICROK8S_CHANNEL` env vars in `hack/` |
+| `ubuntu@26.04` base image | **no** | Rockcraft has no digest pinning for `base:` |
+| apt packages in the rock | **no** | see below |
+
+The last two are the real gaps. Deliberately not pinning apt versions: 26.04 is a development
+release, and the archive drops superseded versions, so `zsh=5.9-x` pins would turn a
+*reproducible* build into a *broken* one within weeks. If you need byte-identical rebuilds,
+the practical answer is to build once and pin the **resulting image by digest** rather than
+trying to make the build deterministic — which is what `hack/deploy.sh` does by tagging with
+the `.rock` hash.
+
+### How reproducible is it in practice?
+
+Measured by packing the same source twice, back to back, in the same VM:
+
+- The two `.rock` files are **not** bit-identical.
+- But the **base image layers are identical**, the image `created` timestamp is identical
+  (Rockcraft pins it to the base image, not to wall-clock time), and every file payload is
+  byte-for-byte identical — `usr/bin/k9s`, `etc/zsh/zshenv`, `root/.zshrc`, `root/.shinit` all
+  match.
+- The only differences are **file mtimes** in the layers we build.
+
+So the build is content-reproducible but not bit-reproducible. That's fine for the digest-
+pinning approach above, and it means a rebuild can be diffed meaningfully: if anything other
+than an mtime changes, an input genuinely changed.
+
+This comparison also caught a real bug: `root/.zshrc` and `root/.shinit` were landing as
+`root:nogroup` in some builds and `root:root` in others, because the `dump` plugin inherits the
+build user's group. The `permissions:` block in the `shell-config` part now pins them.
+
 ## Other targets
 
 ```bash
 make clean    # remove build artifacts
-make vm-down  # delete the Multipass build VM
+make vm-down  # delete the Multipass build VMs
 ```

@@ -25,7 +25,7 @@ if ! multipass info "$VM_NAME" >/dev/null 2>&1; then
   multipass launch "$VM_IMAGE" --name "$VM_NAME" --cpus 4 --memory 6G --disk 25G
 
   log "installing rockcraft"
-  multipass exec "$VM_NAME" -- sudo snap install rockcraft --classic
+  multipass exec "$VM_NAME" -- sudo snap install rockcraft --classic --channel="${ROCKCRAFT_CHANNEL:-latest/stable}"
 
   log "initializing LXD (used by rockcraft to build)"
   multipass exec "$VM_NAME" -- sudo lxd init --auto

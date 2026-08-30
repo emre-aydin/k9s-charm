@@ -33,10 +33,11 @@ charm:
 		exit 1; \
 	fi
 
-.venv:
+.venv: requirements-dev.txt
 	python3 -m venv .venv
 	./.venv/bin/pip install --quiet --upgrade pip
-	./.venv/bin/pip install --quiet "ops[testing]~=2.17" pytest pyyaml
+	./.venv/bin/pip install --quiet -r requirements-dev.txt
+	touch .venv
 
 unit: .venv
 	./.venv/bin/python -m pytest -q
