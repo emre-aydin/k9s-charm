@@ -34,8 +34,11 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: canonical/craft-actions/charmcraft/pack@8bf30ed60eb76cf807c1eb9c728eb1f785afc79d
-        id: charmcraft
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: charm-${{ matrix.arch }}
-          path: ${{ steps.charmcraft.outputs.charm }}
+          # Not steps.charmcraft.outputs.charms: that output is space-separated,
+          # while upload-artifact expects newline-separated globs. charmcraft
+          # only packs the platform matching the runner, so this is unambiguous.
+          path: "*.charm"
+          if-no-files-found: error

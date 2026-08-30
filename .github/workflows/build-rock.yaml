@@ -28,3 +28,4 @@ jobs:
         with:
           name: rock-${{ matrix.arch }}
           path: ${{ steps.rockcraft.outputs.rock }}
+          if-no-files-found: error
