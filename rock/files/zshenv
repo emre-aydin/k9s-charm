@@ -1,0 +1,8 @@
+# Applied to every zsh invocation, including non-interactive ones started by
+# `pebble exec`, which does not necessarily provide a sane environment.
+
+export LANG="${LANG:-C.UTF-8}"
+export LC_ALL="${LC_ALL:-C.UTF-8}"
+export TERM="${TERM:-xterm-256color}"
+export KUBECONFIG="${KUBECONFIG:-/root/.kube/config}"
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"

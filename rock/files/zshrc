@@ -1,0 +1,23 @@
+# Interactive shell defaults for the k9s rock.
+
+HISTFILE=/root/.zsh_history
+HISTSIZE=10000
+SAVEHIST=10000
+setopt HIST_IGNORE_DUPS SHARE_HISTORY INTERACTIVE_COMMENTS
+
+autoload -Uz compinit && compinit -u
+zstyle ':completion:*' menu select
+
+autoload -Uz colors && colors
+PROMPT='%F{green}k9s%f:%F{blue}%~%f %# '
+
+alias ll='ls -alF'
+alias la='ls -A'
+
+# k9s reads KUBECONFIG; the charm is expected to mount or write the kubeconfig
+# for the cluster the workload should talk to.
+export KUBECONFIG="${KUBECONFIG:-/root/.kube/config}"
+
+if command -v k9s >/dev/null 2>&1; then
+  eval "$(k9s completion zsh)" 2>/dev/null || true
+fi

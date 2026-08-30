@@ -1,0 +1,48 @@
+type: charm
+name: k9s
+title: k9s
+summary: A shell into your Kubernetes cluster, with k9s preinstalled
+
+description: |
+  A deliberately inert Juju charm whose only purpose is to give an operator an
+  interactive shell with k9s available.
+
+  The charm runs no workload of its own. It deploys a container built from the
+  k9s rock and generates a kubeconfig from the unit's Kubernetes service
+  account, so that after deploying you can simply run:
+
+      juju ssh --container k9s k9s/0
+
+  and then run `k9s` against the cluster the charm is deployed on.
+
+  Deploy with `--trust` to give k9s cluster-wide visibility. Without it, the
+  service account is scoped to the model's namespace and k9s will only be able
+  to see resources there.
+
+links:
+  source:
+    - https://github.com/emre-aydin/k9s-charm
+  issues:
+    - https://github.com/emre-aydin/k9s-charm/issues
+
+assumes:
+  - k8s-api
+  - juju >= 3.6
+
+platforms:
+  ubuntu@24.04:amd64:
+  ubuntu@24.04:arm64:
+
+containers:
+  k9s:
+    resource: k9s-image
+
+resources:
+  k9s-image:
+    type: oci-image
+    description: OCI image built from rock/rockcraft.yaml, containing k9s and zsh
+
+parts:
+  charm:
+    plugin: charm
+    source: .
