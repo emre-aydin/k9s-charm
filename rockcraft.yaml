@@ -1,0 +1,84 @@
+name: k9s
+base: ubuntu@26.04
+version: "0.51.0"
+summary: k9s terminal UI for Kubernetes
+description: |
+  A rock containing k9s, a terminal UI to interact with Kubernetes clusters,
+  together with an interactive zsh shell.
+
+  It is intended to be used as the workload container of a Juju sidecar charm
+  so that operators can drop into a shell and run k9s against the cluster the
+  charm is deployed on.
+license: Apache-2.0
+
+platforms:
+  amd64:
+  arm64:
+
+environment:
+  LANG: C.UTF-8
+  LC_ALL: C.UTF-8
+  TERM: xterm-256color
+  KUBECONFIG: /root/.kube/config
+
+# The rock is a long-running workload container: keep it alive so that an
+# interactive session can be started with `pebble exec -it /usr/bin/zsh`.
+services:
+  k9s:
+    override: replace
+    command: sleep infinity
+    startup: enabled
+
+parts:
+  k9s:
+    plugin: nil
+    build-packages:
+      - curl
+      - ca-certificates
+    override-build: |
+      set -eu
+
+      K9S_VERSION="$(craftctl get version)"
+      case "${CRAFT_ARCH_BUILD_FOR}" in
+        amd64) K9S_SHA256="c3752ad51a5a4015a113819c4eeb6e55a4d0e4b8e652494797532f6fc8161dd7" ;;
+        arm64) K9S_SHA256="3ee05c82e5f9198928a4e86133608ba6a2c10a2244d6a7789e820f78319d640c" ;;
+        *) echo "unsupported architecture: ${CRAFT_ARCH_BUILD_FOR}" >&2; exit 1 ;;
+      esac
+
+      TARBALL="k9s_Linux_${CRAFT_ARCH_BUILD_FOR}.tar.gz"
+      curl --fail --location --silent --show-error \
+        --output "${TARBALL}" \
+        "https://github.com/derailed/k9s/releases/download/v${K9S_VERSION}/${TARBALL}"
+      echo "${K9S_SHA256}  ${TARBALL}" | sha256sum --check --strict -
+
+      tar --extract --gzip --file "${TARBALL}" k9s
+      install -D -m 0755 k9s "${CRAFT_PART_INSTALL}/usr/bin/k9s"
+
+  shell:
+    plugin: nil
+    after: [k9s]
+    overlay-packages:
+      - bash
+      - bash-completion
+      - ca-certificates
+      - less
+      - locales
+      - ncurses-term
+      - vim-tiny
+      - zsh
+    overlay-script: |
+      set -eu
+      # Make zsh the login shell for root so interactive sessions land in zsh.
+      sed -i 's|^root:\(.*\):/bin/[a-z]*$|root:\1:/usr/bin/zsh|' "${CRAFT_OVERLAY}/etc/passwd"
+      # /etc/zsh/zshenv already ships with the zsh package; append our
+      # defaults rather than replacing the file outright.
+      cat "${CRAFT_PROJECT_DIR}/files/zshenv" >> "${CRAFT_OVERLAY}/etc/zsh/zshenv"
+
+  shell-config:
+    plugin: dump
+    after: [shell]
+    source: files
+    organize:
+      zshrc: root/.zshrc
+    stage:
+      - root/.zshrc
