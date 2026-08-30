@@ -1,0 +1,11 @@
+# Sourced by /bin/sh (dash) for *interactive* shells, via the $ENV variable.
+#
+# `juju ssh --container k9s <unit>` starts /bin/sh directly and ignores the
+# login shell configured in /etc/passwd, so hand over to zsh explicitly here.
+# Non-interactive invocations (`sh -c ...`) never read $ENV, so scripted
+# commands keep running under plain sh.
+if [ -x /usr/bin/zsh ]; then
+    ENV=
+    export ENV
+    exec /usr/bin/zsh
+fi

@@ -20,6 +20,10 @@ environment:
   LC_ALL: C.UTF-8
   TERM: xterm-256color
   KUBECONFIG: /root/.kube/config
+  # Read by /bin/sh (dash) for interactive shells; /root/.shinit execs zsh.
+  # This is what makes `juju ssh --container k9s <unit>` land in zsh, since
+  # Juju starts /bin/sh directly and ignores the login shell in /etc/passwd.
+  ENV: /root/.shinit
 
 # The rock is a long-running workload container: keep it alive so that an
 # interactive session can be started with `pebble exec -it /usr/bin/zsh`.
@@ -80,5 +84,7 @@ parts:
     source: files
     organize:
       zshrc: root/.zshrc
+      shinit: root/.shinit
     stage:
       - root/.zshrc
+      - root/.shinit

@@ -1,2 +1,10 @@
-# Rockcraft build artifacts
+# Rockcraft / charmcraft build artifacts
 *.rock
+*.charm
+build/
+
+# Python
+.venv/
+.pytest_cache/
+__pycache__/
+*.py[cod]

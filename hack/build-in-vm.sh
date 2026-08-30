@@ -11,6 +11,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VM_NAME="${ROCKCRAFT_VM:-k9s-rockcraft-build}"
 VM_IMAGE="${ROCKCRAFT_VM_IMAGE:-26.04}"
 REMOTE_DIR="/home/ubuntu/k9s-charm"
+REMOTE_ROCK_DIR="$REMOTE_DIR/rock"
 
 log() { echo "==> $*" >&2; }
 
@@ -40,14 +41,14 @@ multipass exec "$VM_NAME" -- mkdir -p "$REMOTE_DIR"
 (cd "$REPO_ROOT" && multipass transfer -r . "$VM_NAME:$REMOTE_DIR")
 
 log "removing stale .rock artifacts in VM"
-multipass exec "$VM_NAME" -- sh -c "rm -f '$REMOTE_DIR'/*.rock"
+multipass exec "$VM_NAME" -- sh -c "rm -f '$REMOTE_ROCK_DIR'/*.rock"
 
 log "running rockcraft pack"
-multipass exec "$VM_NAME" -- sh -c "cd '$REMOTE_DIR' && sudo rockcraft pack"
+multipass exec "$VM_NAME" -- sh -c "cd '$REMOTE_ROCK_DIR' && sudo rockcraft pack"
 
 log "fetching built rock(s)"
-ROCKS="$(multipass exec "$VM_NAME" -- sh -c "cd '$REMOTE_DIR' && ls -1 *.rock")"
+ROCKS="$(multipass exec "$VM_NAME" -- sh -c "cd '$REMOTE_ROCK_DIR' && ls -1 *.rock")"
 for rock in $ROCKS; do
-  multipass transfer "$VM_NAME:$REMOTE_DIR/$rock" "$REPO_ROOT/$rock"
+  multipass transfer "$VM_NAME:$REMOTE_ROCK_DIR/$rock" "$REPO_ROOT/$rock"
   log "built $REPO_ROOT/$rock"
 done
