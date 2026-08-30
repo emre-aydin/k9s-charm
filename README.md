@@ -17,22 +17,40 @@ to be used as the workload container of the (upcoming) sidecar charm.
 
 ### Building
 
-Rockcraft only runs on Linux (it is distributed as a snap):
+```bash
+make build
+```
+
+Rockcraft only runs on Linux (it is distributed as a snap). `make build` runs `rockcraft pack`
+directly if `rockcraft` is already installed; otherwise (e.g. on macOS) it transparently builds
+inside a [Multipass](https://multipass.run/) Ubuntu VM (see `hack/build-in-vm.sh`) — install
+Multipass first (`brew install --cask multipass`). Either way you end up with
+`k9s_<version>_<arch>.rock`, an OCI archive, in the repo root.
+
+Other targets:
+
+```bash
+make shell    # load the built .rock into docker and open an interactive zsh shell
+make clean    # remove built .rock files
+make vm-down  # delete the Multipass build VM
+```
+
+To build manually instead of via Make:
 
 ```bash
 sudo snap install rockcraft --classic
 rockcraft pack
 ```
 
-This produces `k9s_<version>_<arch>.rock`, an OCI archive.
-
 ### Running locally
 
-```bash
-sudo rockcraft.skopeo --insecure-policy copy \
-  oci-archive:k9s_0.51.0_amd64.rock docker-daemon:k9s:0.51.0
+`make shell` does this for you (needs `skopeo` — `brew install skopeo` — and Docker running):
 
-docker run --rm -it --entrypoint /usr/bin/zsh k9s:0.51.0
+```bash
+skopeo --insecure-policy copy \
+  oci-archive:k9s_0.51.0_arm64.rock docker-daemon:k9s:local
+
+docker run --rm -it --entrypoint /usr/bin/zsh k9s:local
 ```
 
 To exercise it the way Juju does, run the default entrypoint (Pebble) and exec into it:
