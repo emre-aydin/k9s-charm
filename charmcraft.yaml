@@ -1,6 +1,6 @@
 type: charm
-name: k9s
-title: k9s
+name: k9s-shell
+title: k9s-shell
 summary: A shell into your Kubernetes cluster, with k9s preinstalled
 
 description: |

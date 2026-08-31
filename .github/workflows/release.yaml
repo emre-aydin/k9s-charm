@@ -24,7 +24,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  CHARM_NAME: k9s
+  CHARM_NAME: k9s-shell
   RESOURCE_NAME: k9s-image
 
 jobs:
