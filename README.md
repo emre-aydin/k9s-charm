@@ -175,16 +175,22 @@ charmcraft register k9s-shell
 ```
 
 **2. Mint the CI credentials.** `charmcraft login --export` writes a macaroon that the workflow
-reads from `CHARMCRAFT_AUTH`. Scope it to this charm and to the two permissions the workflow
+reads from `CHARMCRAFT_AUTH`. Scope it to this charm and to the permissions the workflow
 actually uses, rather than exporting your full account credentials:
 
 ```bash
 charmcraft login --export charmhub-auth.txt \
   --charm k9s-shell \
   --permission package-manage-revisions \
+  --permission package-view-revisions \
   --permission package-manage-releases \
   --ttl 7776000   # 90 days, in seconds
 ```
+
+`package-manage-revisions` covers the charm and resource uploads, `package-view-revisions` lets
+`charmcraft upload` read back the revision review it polls (without it the upload fails with
+`Missing required permission: package-view-revisions`), and `package-manage-releases` covers the
+release itself.
 
 Then store the file's contents **verbatim** as the `CHARMHUB_TOKEN` repository secret:
 
