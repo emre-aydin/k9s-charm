@@ -14,7 +14,7 @@ Two things are built from this repo:
 ```bash
 make unit     # run the charm unit tests (creates .venv from requirements-dev.txt)
 make build    # build the rock  -> k9s_<version>_<arch>.rock
-make charm    # build the charm -> k9s_ubuntu@24.04-<arch>.charm
+make charm    # build the charm -> k9s-shell_ubuntu@24.04-<arch>.charm
 make clean    # remove build artifacts (*.rock, *.charm, build/, .venv, caches)
 ```
 

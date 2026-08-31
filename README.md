@@ -21,7 +21,7 @@ configuration. Its only purpose is to be a place you can `juju ssh` into.
 
 | | |
 |---|---|
-| Name | `k9s` |
+| Name | `k9s-shell` |
 | Type | Kubernetes sidecar charm |
 | Containers | `k9s`, backed by the `k9s-image` OCI resource (the rock below) |
 | Relations / config / storage | none, by design |
@@ -38,13 +38,13 @@ land in the shell.
 From Charmhub, once published (see [Publishing to Charmhub](#publishing-to-charmhub)):
 
 ```bash
-juju deploy k9s --channel latest/edge --trust
+juju deploy k9s-shell --channel latest/edge --trust
 ```
 
 Or from a locally built charm, supplying the image yourself:
 
 ```bash
-juju deploy ./k9s_ubuntu@24.04-<arch>.charm k9s \
+juju deploy ./k9s-shell_ubuntu@24.04-<arch>.charm k9s-shell \
   --resource k9s-image=<registry>/k9s:<tag> \
   --trust
 ```
@@ -52,7 +52,7 @@ juju deploy ./k9s_ubuntu@24.04-<arch>.charm k9s \
 Then:
 
 ```bash
-juju ssh --container k9s k9s/0
+juju ssh --container k9s k9s-shell/0
 ```
 
 That drops you straight into `zsh`, with `k9s` on `PATH` and `KUBECONFIG` already pointing at
@@ -107,7 +107,7 @@ with `brew install --cask multipass`.
 
 ```bash
 make build    # build the rock  -> k9s_<version>_<arch>.rock (OCI archive)
-make charm    # build the charm -> k9s_ubuntu@24.04-<arch>.charm
+make charm    # build the charm -> k9s-shell_ubuntu@24.04-<arch>.charm
 make unit     # run the charm unit tests
 ```
 
@@ -158,7 +158,7 @@ them.
 Once published, deploying no longer needs a locally built image or an explicit `--resource`:
 
 ```bash
-juju deploy k9s --channel latest/edge --trust
+juju deploy k9s-shell --channel latest/edge --trust
 ```
 
 ### One-off setup
@@ -171,7 +171,7 @@ only be done by a human — CI cannot bootstrap them.
 ```bash
 sudo snap install charmcraft --classic
 charmcraft login
-charmcraft register k9s
+charmcraft register k9s-shell
 ```
 
 **2. Mint the CI credentials.** `charmcraft login --export` writes a macaroon that the workflow
@@ -180,7 +180,7 @@ actually uses, rather than exporting your full account credentials:
 
 ```bash
 charmcraft login --export charmhub-auth.txt \
-  --charm k9s \
+  --charm k9s-shell \
   --permission package-manage-revisions \
   --permission package-manage-releases \
   --ttl 7776000   # 90 days, in seconds
@@ -206,7 +206,7 @@ For each architecture, in this order:
 3. `charmcraft upload` the charm. **This has to happen before the resource is uploaded** —
    Charmhub will only accept a resource that is declared in an already-uploaded revision of the
    charm, so the very first release necessarily uploads charm revision 1 first.
-4. `charmcraft upload-resource k9s k9s-image --image <path to the .rock>`. `--image` accepts a
+4. `charmcraft upload-resource k9s-shell k9s-image --image <path to the .rock>`. `--image` accepts a
    path to an OCI archive, so the rock goes straight to Charmhub's registry — no Docker daemon
    and no separate `skopeo` copy.
 5. `charmcraft release`, binding the charm revision to the resource revision.
@@ -222,9 +222,9 @@ Releasing does not rebuild anything — it just points a channel at an existing 
 promotion is a re-release of the revisions already in `edge`:
 
 ```bash
-charmcraft status k9s   # lists revisions per channel/base/architecture
-charmcraft release k9s --revision=<amd64 rev> --channel=latest/candidate --resource=k9s-image:<rev>
-charmcraft release k9s --revision=<arm64 rev> --channel=latest/candidate --resource=k9s-image:<rev>
+charmcraft status k9s-shell   # lists revisions per channel/base/architecture
+charmcraft release k9s-shell --revision=<amd64 rev> --channel=latest/candidate --resource=k9s-image:<rev>
+charmcraft release k9s-shell --revision=<arm64 rev> --channel=latest/candidate --resource=k9s-image:<rev>
 ```
 
 Note that each architecture is promoted separately, with the resource revision it was originally
