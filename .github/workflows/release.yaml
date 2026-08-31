@@ -73,17 +73,25 @@ jobs:
       - uses: canonical/craft-actions/charmcraft/pack@8bf30ed60eb76cf807c1eb9c728eb1f785afc79d
         id: charmcraft
 
+      - name: Resolve the packed charm path
+        id: charm
+        run: |
+          # Don't use the action's `charms` output directly: it is built with
+          # `ls -1 *.charm | tr '\n' ' '`, so even a single charm comes back with
+          # a trailing space, and `charmcraft` then looks for a filename ending
+          # in a space and fails with "Charm file not found". charmcraft only
+          # packs the platform matching the runner, so exactly one .charm exists
+          # here -- read it back off disk.
+          echo "path=$(ls -1 ./*.charm | head -1)" >> "$GITHUB_OUTPUT"
+
       - name: Lint the packed charm
         run: |
-          # charmcraft only packs the platform matching the runner, so the
-          # space-separated `charms` output holds exactly one file.
-          #
           # charmcraft encodes the worst lint level in its exit status:
           # 0 = clean, 3 = warnings only, 2 = error, 1 = fatal. Warnings are
           # advisory (several linters warn about things this charm does on
           # purpose, such as having no config), so only errors block a release.
           rc=0
-          charmcraft analyse "${{ steps.charmcraft.outputs.charms }}" || rc=$?
+          charmcraft analyse "${{ steps.charm.outputs.path }}" || rc=$?
           case "$rc" in
             0|3) ;;
             *) echo "charmcraft analyse reported errors (exit $rc)" >&2; exit "$rc" ;;
@@ -97,7 +105,7 @@ jobs:
         env:
           CHARMCRAFT_AUTH: ${{ secrets.CHARMHUB_TOKEN }}
         run: |
-          revision="$(charmcraft upload "${{ steps.charmcraft.outputs.charms }}" --format json | jq -er '.revision')"
+          revision="$(charmcraft upload "${{ steps.charm.outputs.path }}" --format json | jq -er '.revision')"
           echo "revision=$revision" >> "$GITHUB_OUTPUT"
           echo "charm revision: $revision"
 
