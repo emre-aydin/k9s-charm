@@ -90,7 +90,7 @@ the charm's workload container.
 |---|---|
 | Base | `ubuntu@26.04` |
 | Architectures | `amd64`, `arm64` |
-| Contents | `k9s` (pinned upstream release, SHA256-verified), `zsh`, `bash`, `less`, `vim-tiny`, `ncurses-term` |
+| Contents | `k9s` and `kubectl` (pinned upstream releases, SHA256-verified), `zsh`, `bash`, `less`, `vim-tiny`, `ncurses-term` |
 | Pebble service | `k9s` — `sleep infinity`, for standalone use outside Juju |
 
 ### Bumping the k9s version
@@ -98,6 +98,11 @@ the charm's workload container.
 Update `version` in `rock/rockcraft.yaml` and the per-architecture SHA256 sums in the `k9s`
 part. The checksums come from the `checksums.sha256` asset of the corresponding
 [k9s release](https://github.com/derailed/k9s/releases).
+
+### Bumping the kubectl version
+
+Update `KUBECTL_VERSION` in the `kubectl` part of `rock/rockcraft.yaml` and the per-architecture
+SHA256 sums. Each checksum comes from `https://dl.k8s.io/release/<version>/bin/linux/<arch>/kubectl.sha256`.
 
 ## Building
 
@@ -254,6 +259,7 @@ What is pinned, and what isn't:
 | Input | Pinned? | How |
 |---|---|---|
 | k9s binary | yes | exact version + per-arch SHA256 verified at build time in `rock/rockcraft.yaml` |
+| kubectl binary | yes | exact version + per-arch SHA256 verified at build time in `rock/rockcraft.yaml` |
 | `ops` (charm runtime) | yes | `ops==2.23.4` in `requirements.txt` — charmcraft resolves this at pack time, so a range would make two packs of the same source differ |
 | Test toolchain | yes | `requirements-dev.txt` |
 | GitHub Actions | yes | all `uses:` refs are full commit SHAs, including `canonical/craft-actions` |

@@ -21,3 +21,7 @@ export KUBECONFIG="${KUBECONFIG:-/root/.kube/config}"
 if command -v k9s >/dev/null 2>&1; then
   eval "$(k9s completion zsh)" 2>/dev/null || true
 fi
+
+if command -v kubectl >/dev/null 2>&1; then
+  eval "$(kubectl completion zsh)" 2>/dev/null || true
+fi
