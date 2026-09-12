@@ -48,10 +48,29 @@ make clean    # remove build artifacts (*.rock, *.charm, build/, .venv, caches)
   rock sets `ENV=/root/.shinit` so `dash` sources it for *interactive* shells only, and that file
   `exec`s zsh. Non-interactive `juju ssh ... 'cmd'` stays on plain `sh`. Shell config lives in
   `rock/files/` (`zshenv`, `zshrc`, `shinit`).
+- **The rock ships k9s, kubectl, jq and yq** (separate `k9s`, `kubectl`, `jq`, `yq` parts). Each
+  downloads a pinned, SHA-verified binary per arch. `curl` is installed via apt (`overlay-packages`
+  in the `shell` part), intentionally unpinned like the rest of the base image.
 - **Bumping k9s:** update `version` in `rock/rockcraft.yaml` **and** both per-arch `K9S_SHA256`
   sums (from the release's `checksums.sha256`). The build verifies the download against them.
+- **Bumping kubectl:** update `KUBECTL_VERSION` in the `kubectl` part **and** both per-arch
+  `KUBECTL_SHA256` sums (from `https://dl.k8s.io/release/<version>/bin/linux/<arch>/kubectl.sha256`).
+- **Bumping jq:** update `JQ_VERSION` in the `jq` part **and** both per-arch `JQ_SHA256` sums
+  (from the release's `sha256sum.txt` asset at https://github.com/jqlang/jq/releases).
+- **Bumping yq:** update `YQ_VERSION` in the `yq` part **and** both per-arch `YQ_SHA256` sums.
+  The release's `checksums` asset at https://github.com/mikefarah/yq/releases lists several hash
+  algorithms per file — use the SHA-256 column (see `checksums_hashes_order` for column order).
 - **File permissions in the rock are pinned explicitly** (`permissions:` in `shell-config`)
   because the `dump` plugin otherwise inherits the build user's group and varies between builds.
+
+## Local iteration
+
+- `make shell` builds the rock, loads it into Docker via `skopeo`, and opens zsh — quickest way to
+  test the *image* without Juju.
+- End-to-end: `make dev-vm` provisions a Multipass VM (microk8s + Juju + craft tools), then
+  `make deploy` builds and deploys onto it with `--trust`. The microk8s image is tagged with the
+  hash of the built `.rock`; a fixed tag like `latest` would make `juju refresh` treat the OCI
+  resource as unchanged and silently keep the old pod.
 
 ## Reproducibility (a core design goal — see README "Reproducibility")
 
