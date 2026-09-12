@@ -90,7 +90,7 @@ the charm's workload container.
 |---|---|
 | Base | `ubuntu@26.04` |
 | Architectures | `amd64`, `arm64` |
-| Contents | `k9s` and `kubectl` (pinned upstream releases, SHA256-verified), `zsh`, `bash`, `less`, `vim-tiny`, `ncurses-term` |
+| Contents | `k9s`, `kubectl`, `jq` and `yq` (pinned upstream releases, SHA256-verified), `curl` (apt), `zsh`, `bash`, `less`, `vim-tiny`, `ncurses-term` |
 | Pebble service | `k9s` — `sleep infinity`, for standalone use outside Juju |
 
 ### Bumping the k9s version
@@ -103,6 +103,20 @@ part. The checksums come from the `checksums.sha256` asset of the corresponding
 
 Update `KUBECTL_VERSION` in the `kubectl` part of `rock/rockcraft.yaml` and the per-architecture
 SHA256 sums. Each checksum comes from `https://dl.k8s.io/release/<version>/bin/linux/<arch>/kubectl.sha256`.
+
+### Bumping the jq version
+
+Update `JQ_VERSION` in the `jq` part of `rock/rockcraft.yaml` and the per-architecture SHA256
+sums, taken from the `sha256sum.txt` asset of the corresponding
+[jq release](https://github.com/jqlang/jq/releases).
+
+### Bumping the yq version
+
+Update `YQ_VERSION` in the `yq` part of `rock/rockcraft.yaml` and the per-architecture SHA256
+sums. The `checksums` asset of the corresponding
+[yq release](https://github.com/mikefarah/yq/releases) lists several hash algorithms per file;
+the SHA-256 column is the one to use (see `checksums_hashes_order` in the same release for the
+column order).
 
 ## Building
 
